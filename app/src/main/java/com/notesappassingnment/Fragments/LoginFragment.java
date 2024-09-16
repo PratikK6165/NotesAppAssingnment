@@ -19,6 +19,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
+import com.notesappassingnment.DatabaseHelper;
 import com.notesappassingnment.R;
 
 /**
@@ -72,6 +73,7 @@ public class LoginFragment extends Fragment {
     private GoogleSignInClient mGoogleSignInClient;
     ImageView signInButton;
     private static final int RC_SIGN_IN = 9001;
+    DatabaseHelper dbHelper;
 
 
     @Override
@@ -79,6 +81,8 @@ public class LoginFragment extends Fragment {
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_login, container, false);
+        dbHelper = new DatabaseHelper(getContext());
+
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
                 .build();
@@ -123,6 +127,8 @@ public class LoginFragment extends Fragment {
             editor.putString("userEmail", userEmail);
             editor.putString("userId", userId);
             editor.apply();  // Save changes
+
+
 
             // Navigate to NotesListFragment
             // Assuming you are using FragmentManager to navigate

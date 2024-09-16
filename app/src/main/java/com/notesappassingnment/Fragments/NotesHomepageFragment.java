@@ -1,6 +1,10 @@
 package com.notesappassingnment.Fragments;
 
+import static android.content.Context.MODE_PRIVATE;
+
 import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,9 +13,16 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.notesappassingnment.AdapterNoteList;
@@ -69,23 +80,32 @@ public class NotesHomepageFragment extends Fragment {
     }
 
 
-    ImageView newNoteBtn;
+    ImageView newNoteBtn, logOutBtn;
     RecyclerView recyclerView;
     AdapterNoteList adapter;
     DatabaseHelper dbHelper;
     TextView addNoteText;
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
         View view = inflater.inflate(R.layout.fragment_notes_homepage, container, false);
+        SharedPreferences sharedPreferences = getActivity().getSharedPreferences("UserLoginDetails", MODE_PRIVATE);
+
+
+        dbHelper = new DatabaseHelper(getContext());
 
         newNoteBtn = view.findViewById(R.id.btn_add_note);
+        logOutBtn = view.findViewById(R.id.btn_log_out);
         recyclerView = view.findViewById(R.id.recycler_view_notes);
         addNoteText = view.findViewById(R.id.add_note_text);
         dbHelper = new DatabaseHelper(getContext());
-        ArrayList<NoteModel> notes = dbHelper.getAllNotes();
+
+        ArrayList<NoteModel> notes = dbHelper.getAllNotes(sharedPreferences.getString("userId", ""));
+
+
         adapter = new AdapterNoteList(notes, getContext());
         recyclerView.setAdapter(adapter);
 
@@ -94,6 +114,29 @@ public class NotesHomepageFragment extends Fragment {
             @Override
             public void onClick(View view) {
                 openAddNewNoteDialog();
+            }
+        });
+
+        logOutBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+                builder.setTitle("LogOut?").setMessage("Are you want to LogOut of the app?")
+                        .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                logout();
+
+                            }
+                        }).setNegativeButton("No", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+
+                            }
+                        });
+
+                AlertDialog dialog = builder.create();
+                dialog.show();
             }
         });
 
@@ -119,6 +162,8 @@ public class NotesHomepageFragment extends Fragment {
                     // Retrieve input from the EditText fields
                     String noteTitle = etNoteTitle.getText().toString().trim();
                     String noteDetail = etNoteDetail.getText().toString().trim();
+                    SharedPreferences sharedPreferences = getActivity().getSharedPreferences("UserLoginDetails", MODE_PRIVATE);
+                    String userID = sharedPreferences.getString("userId", "");
 
                     // Clear previous errors
                     tilNoteTitle.setError(null);
@@ -131,7 +176,7 @@ public class NotesHomepageFragment extends Fragment {
                         tilNoteDetail.setError("Detail is required");
                     } else {
                         // Save the note (implement this as needed)
-                        saveNote(noteTitle, noteDetail);
+                        saveNote(noteTitle, noteDetail, userID);
                         dialog.dismiss(); // Dismiss the dialog after successful validation
                     }
                 })
@@ -142,13 +187,40 @@ public class NotesHomepageFragment extends Fragment {
         dialog.show();
     }
 
-    private void saveNote(String noteTitle, String noteDetail) {
-        DatabaseHelper dbHelper = new DatabaseHelper(getContext());
-        dbHelper.addNote(noteTitle, noteDetail);
-        ArrayList<NoteModel> notes = dbHelper.getAllNotes();
+    private void saveNote(String noteTitle, String noteDetail, String userId) {
+
+        dbHelper.addNote(noteTitle, noteDetail, userId);
+        ArrayList<NoteModel> notes = dbHelper.getAllNotes(userId);
         NoteModel latestNote = notes.get(notes.size() - 1);
+
         adapter.addNote(latestNote);
+
         Toast.makeText(getContext(), "New note added successfully..", Toast.LENGTH_SHORT).show();
 
+    }
+
+    private void logout() {
+        // Clear SharedPreferences
+        SharedPreferences sharedPreferences = getActivity().getSharedPreferences("UserLoginDetails", MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.clear(); // Clear all stored data
+        editor.apply();
+
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+                .build();
+
+        GoogleSignInClient mGoogleSignInClient = GoogleSignIn.getClient(getActivity(), gso);
+
+        mGoogleSignInClient.signOut().addOnCompleteListener(getActivity(), new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                // Navigate back to LoginFragment after Google sign-out
+                FragmentTransaction transaction = getFragmentManager().beginTransaction();
+                transaction.replace(R.id.main, new LoginFragment());
+                transaction.commit();
+            }
+        });
+        // Close current activity
     }
 }

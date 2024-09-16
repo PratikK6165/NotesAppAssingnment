@@ -16,6 +16,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_ID = "id";
     private static final String COLUMN_TITLE = "title";
     private static final String COLUMN_DETAIL = "detail";
+    private static final String USER_ID = "user_id";
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -27,7 +28,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         String createTable = "CREATE TABLE " + TABLE_NOTES + " ("
                 + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + COLUMN_TITLE + " TEXT, "
-                + COLUMN_DETAIL + " TEXT)";
+                + COLUMN_DETAIL + " TEXT,"
+                + USER_ID + " TEXT)";
         sqLiteDatabase.execSQL(createTable);
 
     }
@@ -39,20 +41,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     }
 
-    public void addNote(String title, String detail) {
+    public void addNote(String title, String detail, String userId) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(COLUMN_TITLE, title);
         values.put(COLUMN_DETAIL, detail);
-
+        values.put(USER_ID, userId);
         db.insert(TABLE_NOTES, null, values);
         db.close();
     }
 
-    public ArrayList<NoteModel> getAllNotes() {
+
+    public ArrayList<NoteModel> getAllNotes(String userId) {
         ArrayList<NoteModel> notes = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT * FROM " + TABLE_NOTES, null);
+        Cursor cursor = db.rawQuery("SELECT * FROM " + TABLE_NOTES + " WHERE " + USER_ID + " = ?", new String[]{userId});
 
         if (cursor.moveToFirst()) {
             do {
@@ -66,6 +69,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.close();
         return notes;
     }
+
     public void updateNote(NoteModel note) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
